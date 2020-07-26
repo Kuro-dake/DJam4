@@ -4,11 +4,20 @@ using UnityEngine;
 
 public class Debris : MonoBehaviour
 {
+    [SerializeField]
     Vector3 direction;
     // Start is called before the first frame update
     public float orig_until_explosion;
     public float until_explosion;
     public static List<Debris> all_debris = new List<Debris>();
+    public static void ExplodeAllDebris()
+    {
+        all_debris.ForEach(delegate (Debris d)
+        {
+            d.Explode();
+        });
+        
+    }
     public static void StartCountdown()
     {
         float extra_time = all_debris[0].until_explosion - (float)Mathf.FloorToInt(all_debris[0].until_explosion);
@@ -27,10 +36,9 @@ public class Debris : MonoBehaviour
     }
     public void Fly()
     {
-        Debug.Log(impact_point);
-        Debug.Log(direction);
-
-
+        if (!alive) {
+            return;
+        }
         if (!initialized)
         {
             throw new UnityException("Uninitialized debris can not fly");
@@ -44,7 +52,7 @@ public class Debris : MonoBehaviour
         int i = 0;
         tr.enabled = false;
         Vector3 npos = transform.position;
-        npos.x = Random.Range(0f, 4f) * (direction.x > 0f ? -1 : 1);
+        npos.x = Random.Range(0f, 8f) * (direction.x > 0f ? -1 : 1);
         transform.position = npos;
         do
         {
@@ -52,7 +60,7 @@ public class Debris : MonoBehaviour
             InitTrajectory();
             foreach (Debris d in all_debris)
             {
-                if (d != this && Mathf.Abs(d.impact_point.x - impact_point.x) < 1f || Mathf.Abs(impact_point.x) > 8f)
+                if (d != this && (persitent && d.persitent) && Mathf.Abs(d.impact_point.x - impact_point.x) < 1f || Mathf.Abs(impact_point.x) > 7f)
                 {
                     pass = false;
                     break;
@@ -66,47 +74,54 @@ public class Debris : MonoBehaviour
             }
         }
         while (!pass);
-        Debug.Log(impact_point);
-        Debug.Log(direction);
+        
         initialized = true;
         all_debris.Add(this);
         total++;
     }
-    void Start()
-    {
-
-        
-
-    }
+   
 
     void InitTrajectory()
     {
-        direction = Vector3.down;
-        direction.x = Random.Range(.3f, 1.1f) * (Random.Range(0, 2) == 1 ? 1 : -1);
-        RaycastHit2D[] rh2d = Physics2D.RaycastAll(transform.position, direction, Mathf.Infinity);
-        foreach (RaycastHit2D hit in rh2d)
+        bool ghit = false;
+        int i = 0;
+        do
         {
-            if (hit.collider.gameObject.tag == "ground")
+            direction = Vector3.down;
+            direction.x = Random.Range(.3f, 1.1f) * (Random.Range(0, 2) == 1 ? 1 : -1);
+            RaycastHit2D[] rh2d = Physics2D.RaycastAll(transform.position, direction, Mathf.Infinity);
+            foreach (RaycastHit2D hit in rh2d)
             {
-                impact_point = hit.point;
-                break;
+                if (hit.collider.gameObject.tag == "ground")
+                {
+
+                    impact_point = hit.point;
+                    ghit = true;
+                    break;
+                }
+            }
+            if(i++ > 100)
+            {
+                throw new UnityException("Cannot find ground");
             }
         }
+        while (!ghit);
+        
     }
+    [SerializeField]
     Vector3 impact_point;
     LineRenderer lr { get { return GetComponent<LineRenderer>(); } }
     TrailRenderer tr { get { return GetComponent<TrailRenderer>(); } }
     ParticleSystem explosion { get { return transform.Find("explosion").GetComponent<ParticleSystem>(); } }
     IEnumerator ShowImpactAndFly(Vector3 from, Vector3 to)
     {
-        Debug.Log(from);
-        Debug.Log(to);
+        
         lr.SetPositions(new Vector3[] { to, from });
         while ((lr.startWidth -= Time.deltaTime * .5f) > 0f)
         {
             yield return null;
         }
-        direction = (to - from).normalized;
+        //direction = (to - from).normalized;
         moving = true;
         tr.enabled = true;
         lr.enabled = false;
@@ -159,10 +174,7 @@ public class Debris : MonoBehaviour
             }
             if (until_explosion <= 0f)
             {
-                StartCoroutine(Explode());
-                Destroy(cd.gameObject);
-                GM.Explode();
-                countdown = false;
+                GM.GameOver();
             }
             until_explosion -= Time.deltaTime;
             return;
@@ -172,6 +184,16 @@ public class Debris : MonoBehaviour
             return;
         }
         transform.position += direction * Time.deltaTime * speed;
+    }
+    public void Explode()
+    {
+        StartCoroutine(ExplodeStep());
+        Destroy(cd.gameObject);
+        
+        alive = false;
+        countdown = false;
+        GM.Explode();
+        countdown = false;
     }
     public bool alive = true;
     [SerializeField]
@@ -184,14 +206,16 @@ public class Debris : MonoBehaviour
         }
     }
     SpriteRenderer sr { get { return GetComponent<SpriteRenderer>(); } }
-    IEnumerator Explode() {
+    IEnumerator ExplodeStep() {
 
         explosion.startColor = GM.explode_debris_color;
-        alive = false;
+        yield return null;
+        all_debris.Remove(this);
         explosion.Play();
         yield return new WaitForSeconds(.1f);
         sr.enabled = false;
         yield return new WaitForSeconds(1f);
+        
         DestroyDebris();
     }
     void DestroyDebris()
@@ -207,6 +231,7 @@ public class Debris : MonoBehaviour
     [SerializeField]
     float kill_radius = .7f;
     Countdown cd { get { return GetComponentInChildren<Countdown>(); } }
+    public bool persitent = true;
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.gameObject.tag == "ground")
@@ -217,10 +242,14 @@ public class Debris : MonoBehaviour
             GM.ShakeScreen(.5f);
             Debug.DrawLine(transform.position + Vector3.left * kill_radius, transform.position + Vector3.right * kill_radius, Color.red, .5f);
             GM.Explode();
+            if (!persitent)
+            {
+                Explode();
+            }
             if (Mathf.Abs(GM.player.transform.position.x - transform.position.x) < kill_radius)
             {
-               /* Destroy(GM.player.gameObject);
-                GM.GameOver();*/
+                //Destroy(GM.player.gameObject);
+                GM.GameOver();
             }
             
         }
@@ -234,7 +263,11 @@ public class Debris : MonoBehaviour
 
     private void OnMouseEnter()
     {
-        stasis = this;
+        if(alive && persitent && countdown)
+        {
+            stasis = this;
+        }
+        
     }
 
     private void LateUpdate()
@@ -284,7 +317,7 @@ public class Debris : MonoBehaviour
         GM.effects.PlayEffect("salvage", transform.position, true);
         while(sr.color.a > 0f)
         {
-            sr.color -= Color.black * Time.deltaTime;
+            sr.color -= Color.black * Time.fixedDeltaTime;
             yield return null;
         }
         Destroy(gameObject);

@@ -17,9 +17,111 @@ public class GM : MonoBehaviour
     {
         shake_center = Camera.main.transform.position;
         player.recharges = player.recharges;
+        Intro();
+    }
+    Coroutine start_level_routine = null;
+    private void Update()
+    {
+        ticked = false;
+        ui_text = player.recharges > 0 ? player.recharges + " remote reset usages left" : "";
+
+        if(start_level_routine != null && Input.GetKeyDown(KeyCode.Space))
+        {
+            StopCoroutine(start_level_routine);
+            start_level_routine = null;
+            level_description.Erase();
+            SetCurtainVisible(false);
+            debris.RunLevel(debris.run_level);
+            
+        }
+    }
+    void Intro()
+    {
+        StartCoroutine(IntroStep());
+    }
+    IEnumerator IntroStep()
+    {
+        yield return new WaitForSeconds(.4f);
+        level_description.text = "Portal Assembly\n\nYour colony spaceship is under attack, and is descending into an atmosphere of an unknown planet.\n\n" +
+            "You didn't manage to reach the on-board portal. Your only choice was to save yourself in an escape pod.\n\n" +
+            "Now you need to salvage the debris of your destroyed spaceship that is raining on the planet your escape pod crashed into\n" +
+            "and use it to build another portal.\n\nPress space to start";
+        yield return level_description.Write(true);
+
+        while (!Input.GetKeyDown(KeyCode.Space))
+        {
+            yield return null;
+        }
+        GameOver();
+    }
+    void Outro()
+    {
+        StartCoroutine(OutroStep());
+    }
+    IEnumerator OutroStep()
+    {
+        yield return new WaitForSeconds(.4f);
+        level_description.text = "You have succesfuly built the portal and escaped the planet.\n\n" +
+            "Congratulations, and thank you gor playing\n\n" +
+            "Made by Kuro / Dizztal for DJam4\n" +
+            "26 - 27 July 2020";
+        yield return level_description.Write(true);
+
+        while (true)
+        {
+            yield return null;
+        }
+        
+    }
+    void StartLevel(int level)
+    {
+        start_level_routine = StartCoroutine(StartLevelStep(level));
+    }
+    string[] level_names = new string[]
+    {
+        "\"Crash landing\"" +
+        "\n\n" +
+        "Press Spacebar to skip this text\n\n"+
+        "Use A and D or left and right cursor keys to move.\n\n" +
+        "Avoid falling debris!\n\n" +
+        "Use W or up cursor key to salvage fallen debris once the timers appear.\n\n" +
+        "You have limited time to salvage each fallen part before it explodes, and destroys all the other debris.",
+
+        "\"The ship enters the atmosphere\"\n\n" +
+        "Watch the order in which the debris hit the ground.\nThe sooner debris falls the sooner it explodes.",
+
+        "\"Stasis\"\n\n" +
+        "You have gained the ability to stop the countdown of a single debris.\nHover with your mouse over the debris you wish to freeze.",
+
+        "\"Time freezes\"\n\n" +
+        "You have gained the ability to reset the debris timers.\nClick the debris of which timer you wish to reset.\n" +
+        "\nYou can do this three times per wave.\n\n" +
+        "You have also gained the ability to stop time. Stop moving to freeze time, \nso you can better decide what to do next.",
+
+        "\"The sky is falling down\"\n\n" +
+        "You have gained the ability to reset any debris timer as many times you want.\n\n" +
+        "The debris timers will reset once you approach it."
+    };
+    IEnumerator StartLevelStep(int level)
+    {
+        yield return new WaitForSeconds(.4f);
+        level_description.text = "Level " + (level + 1) + ":\n" + level_names[level];
+        yield return level_description.Write(true);
+        
+        while (!Input.GetKeyDown(KeyCode.Space))
+        {
+            yield return null;
+        }
+        level_description.Erase();
+        yield return SetCurtainVisible(false);
+        yield return new WaitForSeconds(1.5f);
+
+        debris.RunLevel(level);
+        start_level_routine = null;
     }
     public static AudioManager audio { get { return inst.GetComponentInChildren<AudioManager>(); } }
     public static EffectsManager effects { get { return inst.GetComponentInChildren<EffectsManager>(); } }
+    public static DebrisGenerator debris { get { return inst.GetComponentInChildren<DebrisGenerator>(); } }
 
     public bool shake_screen = false;
 
@@ -57,14 +159,35 @@ public class GM : MonoBehaviour
             inst.dev_output.text = value;
         }
     }
+    static Coroutine game_over_routine = null;
+
     public static void GameOver()
     {
-        inst.StartCoroutine(inst.GameOverStep());
+        if(game_over_routine == null)
+        {
+            game_over_routine = inst.StartCoroutine(GameOverStep());
+        }
+        
     }
-    IEnumerator GameOverStep()
+    static IEnumerator GameOverStep()
     {
-        yield return new WaitForSeconds(1f);
-        Application.LoadLevel(0);
+        
+        Debris.ExplodeAllDebris();
+        debris.StopRunLevel();
+        
+        yield return SetCurtainVisible(true);
+        game_over_routine = null;
+        yield return null;
+        if(debris.run_level < 5)
+        {
+            inst.StartLevel(debris.run_level);
+        }
+        else
+        {
+            inst.Outro();
+        }
+        
+        
     }
     [SerializeField]
     Sprite _circle;
@@ -86,11 +209,7 @@ public class GM : MonoBehaviour
 
     static bool ticked = false;
     static int clock = 1;
-    private void Update()
-    {
-        ticked = false;
-        ui_text = "recharges: " + player.recharges + " salvaged " + Debris.salvaged + "/" + Debris.total + (paused ? " <b>||</b>" : "");
-    }
+  
     
     public static void Tick() {
         if (ticked)
@@ -107,6 +226,8 @@ public class GM : MonoBehaviour
         int expl = Random.Range(1, 3);
         audio.PlaySound("explode" + expl, expl == 1 ? .9f : .6f, new FloatRange(.8f, 1.2f));
     }
+    [SerializeField]
+    GameObject pause_icon;
     static bool _paused = false;
     public static bool paused
     {
@@ -117,7 +238,44 @@ public class GM : MonoBehaviour
         set
         {
             _paused = value;
-            Time.timeScale = value ? 0f : 1f;
+            if(game_over_routine == null && inst.start_level_routine == null)
+            {
+                Time.timeScale = value ? 0f : 1f;
+                foreach (Image i in inst.pause_icon.GetComponentsInChildren<Image>())
+                {
+                    i.enabled = value;
+                }
+            }
+            else
+            {
+                Time.timeScale = 1f;
+                foreach (Image i in inst.pause_icon.GetComponentsInChildren<Image>())
+                {
+                    i.enabled = false;
+                }
+            }
+            
+        }
+    }
+    static Coroutine SetCurtainVisible(bool visible)
+    {
+        return inst.StartCoroutine(inst.SetCurtainVisibleStep(visible));
+    }
+    [SerializeField]
+    TextWriter level_description;
+    [SerializeField]
+    float curtain_speed = 2f;
+    [SerializeField]
+    Image curtain;
+    IEnumerator SetCurtainVisibleStep(bool visible)
+    {
+        float target = visible ? 1f : 0f;
+        while (!Mathf.Approximately(curtain.color.a, target))
+        {
+            Color c = curtain.color;
+            c.a = Mathf.MoveTowards(c.a, target, Time.deltaTime * curtain_speed);
+            curtain.color = c;
+            yield return null;
         }
     }
 }

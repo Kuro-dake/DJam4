@@ -18,10 +18,11 @@ public class Countdown : MonoBehaviour
         Vector3 localscale = transform.localScale;
         while (true)
         {
-            transform.localScale = localscale * (1f+(Mathf.Sin(Time.time * 8) + 2f) / 14f);
+            transform.localScale = localscale * (1f+(Mathf.Sin(Time.realtimeSinceStartup * 8) + 2f) / 14f);
             yield return null;
         }
     }
+    
     public void SetNumber(int number)
     {
         max = number;

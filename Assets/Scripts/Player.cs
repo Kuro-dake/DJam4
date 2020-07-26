@@ -10,17 +10,21 @@ public class Player : MonoBehaviour
         {action.none, Vector3.zero}
     };
     Dictionary<KeyCode, action> direction_keys = new Dictionary<KeyCode, action>() {
+        {KeyCode.W, action.interact },
+        {KeyCode.UpArrow, action.interact },
+
         {KeyCode.A, action.left },
         {KeyCode.D, action.right },
-        {KeyCode.W, action.interact },
+        
         {KeyCode.LeftArrow, action.left },
         {KeyCode.RightArrow, action.right },
-        {KeyCode.UpArrow, action.interact }
+        
 
     };
     float x_boundary = 8f;
     void Act(action d)
     {
+        
         if (direction_movement.ContainsKey(d))
         {
             Vector3 npos = transform.position + direction_movement[d] * Time.deltaTime * speed;
@@ -30,13 +34,12 @@ public class Player : MonoBehaviour
             transform.position = npos;
 
             csr.flipX = d == action.left;
+            pause_in = .3f;
+            interacting = false;
         }
-        else if(d == action.interact)
-        {
-            Interact();
-        }
+        
         GM.paused = false;
-        pause_in = 1f;
+        
         
     }
     bool walking = false;
@@ -46,19 +49,29 @@ public class Player : MonoBehaviour
     SpriteRenderer csr { get { return GetComponentInChildren<SpriteRenderer>(); } }
     Animator anim { get { return GetComponent<Animator>(); } }
     // Update is called once per frame
-    float pause_in = 1f;
+    float pause_in = .3f;
+    public bool time_stop { get { return GM.debris.run_level >= 3; } }
     void Update()
     {
-        interacting = false;
+        
         walking = false;
         foreach(KeyValuePair<KeyCode, action> kv in direction_keys)
         {
             if (Input.GetKey(kv.Key))
             {
                 Act(kv.Value);
+                break;
             }
         }
-        if(DebrisGenerator.playing && !GM.paused && (pause_in-= Time.deltaTime) <= 0f)
+        if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow)) 
+        {
+            interacting = true;
+        }
+        if (interacting)
+        {
+            interacting = Interact();
+        }
+        if(DebrisGenerator.playing && time_stop && !GM.paused && (pause_in-= Time.deltaTime) <= 0f)
         {
             GM.paused = true;
         }
@@ -124,19 +137,21 @@ public class Player : MonoBehaviour
     float current_interact_duration = 0f;
     public bool interacting = false;
     bool was_interacting = false;
-    void Interact()
+    bool Interact()
     {
         Debris d = nearby_active_debris;
         if(d == null)
         {
-            return;
+            return false;
         }
-        interacting = true;
+        pause_in = .3f;
         if((current_interact_duration -= Time.deltaTime) <= 0f)
         {
             d.Salvage();
-            current_interact_duration = interact_duration; 
+            current_interact_duration = interact_duration;
+            return false;
         }
+        return true;
     }
     public Debris nearby_active_debris
     {
@@ -155,7 +170,7 @@ public class Player : MonoBehaviour
         }
     }
 
-    int _recharges = 3;
+    int _recharges = 0;
     public int recharges
     {
         get { return _recharges; }
@@ -164,9 +179,9 @@ public class Player : MonoBehaviour
             _recharges = value;
         }
     }
-    [SerializeField]
-    bool reset_on_pass = false;
-    public bool hover_stasis = false;
+    
+    bool reset_on_pass { get { return GM.debris.run_level >= 4; } }
+    public bool hover_stasis { get { return GM.debris.run_level >= 2; } }
 }
 
 enum action

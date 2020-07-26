@@ -7,12 +7,8 @@ public class DebrisGenerator : MonoBehaviour
     [SerializeField]
     Debris debris_prefab;
     // Start is called before the first frame update
-    [SerializeField]
-    int run_level = 0;
-    void Start()
-    {
-        RunLevel(run_level);
-    }
+    
+    public int run_level = 0;
     
     [SerializeField]
     FloatRange[] generate_delay;
@@ -29,27 +25,35 @@ public class DebrisGenerator : MonoBehaviour
     void Update()
     {
 
-        if (Input.GetKeyDown(KeyCode.Space))
+       
+    }
+    Coroutine run_level_routine = null;
+    public void RunLevel(int level)
+    {
+        run_level_routine = StartCoroutine(RunLevelStep(level));
+    }
+    public void StopRunLevel()
+    {
+        if(run_level_routine != null)
         {
-            Debris.all_debris.Clear();
-            GM.paused = false;
-            Application.LoadLevel(0);
+            StopCoroutine(run_level_routine);
         }
     }
-
-    void RunLevel(int level)
+    public void RestartLevel()
     {
-        StartCoroutine(RunLevelStep(level));
+        RunLevel(run_level);
     }
     [SerializeField]
     Collider2D ground_collider;
+    [SerializeField]
+    int[] trash_debris_num;
     Coroutine watch_debris_routine;
-    List<Debris> GenerateDebrisFromSeed(int level)
+    List<Debris> GenerateDebrisFromSeed(int level, int seed)
     {
 
-        int seed = Random.Range(int.MinValue, int.MaxValue);
-        Debug.Log(seed);
-        Random.InitState(-413498176);
+        //seed = Random.Range(int.MinValue, int.MaxValue);
+        //Debug.Log(seed);
+        Random.InitState(seed);
 
         List<Debris> generated_debris = new List<Debris>();
         for (int i = 0; i < level_debris_numbers[level]; i++)
@@ -64,54 +68,81 @@ public class DebrisGenerator : MonoBehaviour
         }
         return generated_debris;
     }
-    IEnumerator RunLevelStep(int level)
+    IEnumerator GenerateTrashDebris(int level)
     {
-        playing = false;
-        ground_collider.enabled = true;
-        yield return new WaitForSeconds(generate_delay[level]);
-        List<Debris> generated_debris = GenerateDebrisFromSeed(level);
-        
-        foreach (Debris d in generated_debris)
+
+        List<Debris> trash = new List<Debris>();
+        for (int i = 0; i < trash_debris_num[level]; i++)
+        {
+            Debris d = Instantiate(debris_prefab);
+            d.persitent = false;
+            
+            trash.Add(d);
+            
+            
+        }
+
+        foreach(Debris d in trash)
         {
             d.Initialize();
-        }
-        Debug.Log("-------------");
-        yield return null;
-        foreach (Debris d in generated_debris)
-        {
+            yield return new WaitForSeconds(generate_delay[level] / 2f); ;
             d.Fly();
-            yield return new WaitForSeconds(generate_delay[level]);
         }
+
         
-        yield return new WaitForSeconds(3f);
-        ground_collider.enabled = false;
-        GM.Tick();
-        Debris.StartCountdown();
-        GM.player.recharges = 3;
-        GM.paused = true;
-        if(watch_debris_routine == null)
+    }
+    IEnumerator RunLevelStep(int level)
+    {
+        Debris.salvaged = 0;
+        Debris.total = 0;
+        run_level = level;
+        int current_level = level;    
+        foreach (string level_seed_string in level_seeds[current_level].Split(new char[] { '|' }))
         {
-            watch_debris_routine = StartCoroutine(WatchDebris());
+
+            int level_seed = int.Parse(level_seed_string);
+            playing = false;
+            ground_collider.enabled = true;
+            yield return new WaitForSeconds(generate_delay[current_level]);
+            List<Debris> generated_debris = GenerateDebrisFromSeed(current_level, level_seed);
+            
+            foreach (Debris d in generated_debris)
+            {
+                d.Initialize();
+            }
+                
+            yield return null;
+            foreach (Debris d in generated_debris)
+            {
+                d.Fly();
+                yield return new WaitForSeconds(generate_delay[current_level]);
+            }
+            Coroutine trash_routine = StartCoroutine(GenerateTrashDebris(current_level));
+            yield return trash_routine;
+
+            yield return new WaitForSeconds(3f);
+            ground_collider.enabled = false;
+            GM.Tick();
+            Debris.StartCountdown();
+            GM.player.recharges = current_level >= 3 ? 3 : 0;
+            GM.paused = true;
+
+            playing = true;
+            while (Debris.all_debris.Count > 0)
+            {
+                yield return null;
+            }
+            playing = false;
+
+            yield return new WaitForSeconds(2f);
+
+            
+            
         }
-        
+        run_level++;
+        GM.GameOver();
+
     }
     public static bool playing { get; protected set; }
-    IEnumerator WatchDebris()
-    {
-        playing = true;
-        while(Debris.all_debris.Count > 0)
-        {
-            yield return null;
-        }
-        playing = false;
-
-        yield return new WaitForSeconds(2f);
-        run_level++;
-        if(run_level < 5)
-        {
-            StartCoroutine(RunLevelStep(run_level));
-        }
-        watch_debris_routine = null;
-        
-    }
+    
 }
