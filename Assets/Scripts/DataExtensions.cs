@@ -203,6 +203,11 @@ public class NamedAudioClip : Pair<string, AudioClip>
 {
     public NamedAudioClip(string s, AudioClip a) : base(s, a) { }
 }
+[System.Serializable]
+public class NamedEffect : Pair<string, Effect>
+{
+    public NamedEffect(string s, Effect a) : base(s, a) { }
+}
 
 public class Pair<T1, T2>
 {
@@ -264,7 +269,51 @@ public class IntRange : Pair<int, int>
     public int max { get { return second; } set { second = value; } }
     public IntRange(int a, int b) : base(a, b) { }
     public IntRange(int[] range) : base(range[0], range[1]) { }
+    int _steps = 0;
+    List<float> step_values = new List<float>();
+    float step_value = 0f;
+    public int steps
+    {
+        get
+        {
+            return _steps;
+        }
+        set
+        {
+            _steps = value;
+            List<float> step_values = new List<float>();
+            step_values.Clear();
 
+            step_value = (max - min) / (float)(_steps - 1);
+            for (int i = 0; i < _steps; i++)
+            {
+                step_values.Add(min + step_value * i);
+            }
+        }
+    }
+    public float StepValue(int step)
+    {
+        if (steps == 0)
+        {
+            throw new UnityException("Range steps have not been set");
+        }
+        if (step < 0)
+        {
+            return step_values[step_values.Count + step];
+        }
+        return step_values[step];
+    }
+    public int GetStep(float val)
+    {
+
+
+        if (val < min)
+        {
+            return 0;
+        }
+        return Mathf.RoundToInt((val + (step_value)) / step_value);
+    }
+    public float this[int step] { get { return StepValue(step); } }
     public int random { get { return min == max ? min : Random.Range(min, max); } }
     public static implicit operator int(IntRange d)
     {
