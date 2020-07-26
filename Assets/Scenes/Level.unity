@@ -415,6 +415,8 @@ MonoBehaviour:
   cd_segments: 12
   interact_duration: 3
   interacting: 0
+  reset_on_pass: 0
+  hover_stasis: 0
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0
@@ -544,7 +546,7 @@ MonoBehaviour:
   max: 0
   color: {r: 0.39999998, g: 0.510188, b: 1, a: 0.627451}
   segment_size: 0.8
-  distance_from_center: 0.4
+  distance_from_center: 0.3
 --- !u!1 &710569951
 GameObject:
   m_ObjectHideFlags: 0
@@ -916,7 +918,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   debris_prefab: {fileID: 3772216799440947886, guid: 63fa86d976814564d927ee31695fb33e,
     type: 3}
-  run_level: 0
+  run_level: 1
   generate_delay:
   - first: 0.5
     second: 0.7
@@ -930,16 +932,22 @@ MonoBehaviour:
     second: 0.3
   until_explosion_ranges:
   - first: 10
-    second: 25
+    second: 35
   - first: 10
+    second: 30
+  - first: 8
+    second: 25
+  - first: 8
     second: 20
-  - first: 8
-    second: 16
-  - first: 8
-    second: 14
   - first: 6
-    second: 10
-  level_debris_numbers: 0300000003000000040000000600000008000000
+    second: 15
+  level_debris_numbers: 030000000400000006000000080000000a000000
+  level_seeds:
+  - 405241157|382049334|-1988037887
+  - 
+  - 
+  - 
+  - 
   ground_collider: {fileID: 1615194286}
 --- !u!4 &1217658796
 Transform:
@@ -1056,7 +1064,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 21, y: -19}
-  m_SizeDelta: {x: 300, y: 300}
+  m_SizeDelta: {x: 500, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1345591865
 MonoBehaviour:
@@ -1078,10 +1086,10 @@ MonoBehaviour:
       m_Calls: []
   m_FontData:
     m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
-    m_FontSize: 27
+    m_FontSize: 15
     m_FontStyle: 0
     m_BestFit: 0
-    m_MinSize: 2
+    m_MinSize: 1
     m_MaxSize: 52
     m_Alignment: 0
     m_AlignByGeometry: 0
@@ -1109,11 +1117,6 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: Debris
-      objectReference: {fileID: 0}
-    - target: {fileID: 3772216799440947881, guid: 63fa86d976814564d927ee31695fb33e,
-        type: 3}
-      propertyPath: m_IsActive
-      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3772216799440947874, guid: 63fa86d976814564d927ee31695fb33e,
         type: 3}
@@ -6236,7 +6239,7 @@ ParticleSystem:
   looping: 1
   prewarm: 0
   playOnAwake: 1
-  useUnscaledTime: 0
+  useUnscaledTime: 1
   autoRandomSeed: 1
   useRigidbodyForVelocity: 1
   startDelay:
@@ -11064,7 +11067,7 @@ ParticleSystem:
   looping: 1
   prewarm: 0
   playOnAwake: 1
-  useUnscaledTime: 0
+  useUnscaledTime: 1
   autoRandomSeed: 1
   useRigidbodyForVelocity: 1
   startDelay:
@@ -15952,7 +15955,7 @@ ParticleSystem:
   looping: 1
   prewarm: 0
   playOnAwake: 1
-  useUnscaledTime: 0
+  useUnscaledTime: 1
   autoRandomSeed: 1
   useRigidbodyForVelocity: 1
   startDelay:
@@ -20745,7 +20748,7 @@ ParticleSystem:
   looping: 1
   prewarm: 0
   playOnAwake: 1
-  useUnscaledTime: 0
+  useUnscaledTime: 1
   autoRandomSeed: 1
   useRigidbodyForVelocity: 1
   startDelay:
@@ -25552,7 +25555,7 @@ ParticleSystem:
   looping: 1
   prewarm: 0
   playOnAwake: 1
-  useUnscaledTime: 0
+  useUnscaledTime: 1
   autoRandomSeed: 1
   useRigidbodyForVelocity: 1
   startDelay:

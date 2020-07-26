@@ -32,7 +32,7 @@ public class Countdown : MonoBehaviour
     }
     void CreateCircles(int number)
     {
-        distance_from_center = .4f;
+        
         float angle_modifier = 0f;
         transform.DestroyChildren();
         for (int i = 0; i <number; i++)

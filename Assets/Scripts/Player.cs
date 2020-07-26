@@ -4,28 +4,39 @@ using UnityEngine;
 
 public class Player : MonoBehaviour
 {
-    Dictionary<direction, Vector3> direction_movement = new Dictionary<direction, Vector3>() {
-        {direction.left, Vector3.left },
-        {direction.right, Vector3.right },
-        {direction.none, Vector3.zero}
+    Dictionary<action, Vector3> direction_movement = new Dictionary<action, Vector3>() {
+        {action.left, Vector3.left },
+        {action.right, Vector3.right },
+        {action.none, Vector3.zero}
     };
-    Dictionary<KeyCode, direction> direction_keys = new Dictionary<KeyCode, direction>() {
-        {KeyCode.A, direction.left },
-        {KeyCode.D, direction.right },
-        {KeyCode.LeftArrow, direction.left },
-        {KeyCode.RightArrow, direction.right }
+    Dictionary<KeyCode, action> direction_keys = new Dictionary<KeyCode, action>() {
+        {KeyCode.A, action.left },
+        {KeyCode.D, action.right },
+        {KeyCode.W, action.interact },
+        {KeyCode.LeftArrow, action.left },
+        {KeyCode.RightArrow, action.right },
+        {KeyCode.UpArrow, action.interact }
 
     };
     float x_boundary = 8f;
-    void Move(direction d)
+    void Act(action d)
     {
-        Vector3 npos = transform.position + direction_movement[d] * Time.deltaTime * speed;
-        float nval = Mathf.Clamp(npos.x, -x_boundary, x_boundary);
-        walking = nval == npos.x;
-        npos.x = nval;
-        transform.position = npos;
-        
-        csr.flipX = d == direction.left;
+        if (direction_movement.ContainsKey(d))
+        {
+            Vector3 npos = transform.position + direction_movement[d] * Time.deltaTime * speed;
+            float nval = Mathf.Clamp(npos.x, -x_boundary, x_boundary);
+            walking = nval == npos.x;
+            npos.x = nval;
+            transform.position = npos;
+
+            csr.flipX = d == action.left;
+        }
+        else if(d == action.interact)
+        {
+            Interact();
+        }
+        GM.paused = false;
+        pause_in = 1f;
         
     }
     bool walking = false;
@@ -35,23 +46,28 @@ public class Player : MonoBehaviour
     SpriteRenderer csr { get { return GetComponentInChildren<SpriteRenderer>(); } }
     Animator anim { get { return GetComponent<Animator>(); } }
     // Update is called once per frame
+    float pause_in = 1f;
     void Update()
     {
         interacting = false;
         walking = false;
-        foreach(KeyValuePair<KeyCode, direction> kv in direction_keys)
+        foreach(KeyValuePair<KeyCode, action> kv in direction_keys)
         {
             if (Input.GetKey(kv.Key))
             {
-                Move(kv.Value);
+                Act(kv.Value);
             }
         }
-        if(Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
+        if(DebrisGenerator.playing && !GM.paused && (pause_in-= Time.deltaTime) <= 0f)
         {
-            Interact();
+            GM.paused = true;
         }
         anim.SetBool("walking", walking);
-
+        
+        if(nearby_active_debris != null && reset_on_pass)
+        {
+            nearby_active_debris.ResetCountdown();
+        }
         if (!interacting)
         {
             current_interact_duration = interact_duration;
@@ -63,6 +79,7 @@ public class Player : MonoBehaviour
             if (!was_interacting)
             {
                 cd.SetNumber(cd_segments);
+                cd.transform.position = nearby_active_debris.transform.position;
                 work_sound = true;
             }
             else
@@ -117,7 +134,7 @@ public class Player : MonoBehaviour
         interacting = true;
         if((current_interact_duration -= Time.deltaTime) <= 0f)
         {
-            d.Disarm();
+            d.Salvage();
             current_interact_duration = interact_duration; 
         }
     }
@@ -145,15 +162,17 @@ public class Player : MonoBehaviour
         set
         {
             _recharges = value;
-            GM.ui_text = "recharges: " + recharges;
         }
     }
-
+    [SerializeField]
+    bool reset_on_pass = false;
+    public bool hover_stasis = false;
 }
 
-enum direction
+enum action
 {
     left,
     right,
+    interact,
     none
 }

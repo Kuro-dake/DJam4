@@ -89,7 +89,9 @@ public class GM : MonoBehaviour
     private void Update()
     {
         ticked = false;
+        ui_text = "recharges: " + player.recharges + " salvaged " + Debris.salvaged + "/" + Debris.total + (paused ? " <b>||</b>" : "");
     }
+    
     public static void Tick() {
         if (ticked)
         {
@@ -105,5 +107,17 @@ public class GM : MonoBehaviour
         int expl = Random.Range(1, 3);
         audio.PlaySound("explode" + expl, expl == 1 ? .9f : .6f, new FloatRange(.8f, 1.2f));
     }
-    
+    static bool _paused = false;
+    public static bool paused
+    {
+        get
+        {
+            return _paused;
+        }
+        set
+        {
+            _paused = value;
+            Time.timeScale = value ? 0f : 1f;
+        }
+    }
 }

@@ -34,7 +34,7 @@ public class Thunderstorm : MonoBehaviour
 
     private void Update()
     {
-        sr.color -= Color.black * Time.deltaTime * .5f;
+        sr.color -= Color.black * Time.fixedDeltaTime * .5f;
     }
 
     [SerializeField]
@@ -63,9 +63,9 @@ public class Thunderstorm : MonoBehaviour
                 numbers = new List<int> { 1, 2, 3,4 };
             }
             GM.audio.PlaySound("thunderbolt" + cnumber.ToString(), .6f, new FloatRange(.6f, .8f));
-            while ((env_light.intensity -= Time.deltaTime * speed) > prev_intensity)
+            while ((env_light.intensity -= Time.fixedDeltaTime * speed) > prev_intensity)
             {
-                Camera.main.backgroundColor -= bgcolor * Time.deltaTime * (1f / speed);
+                Camera.main.backgroundColor -= bgcolor * Time.fixedDeltaTime * (1f / speed);
                 yield return null;
             }
             Camera.main.backgroundColor = Color.black;
