@@ -45,8 +45,7 @@ public class TextWriter : MonoBehaviour
     }
     IEnumerator WriteStep()
     {
-        Debug.Log(cursor);
-        Debug.Log(text.Length);
+
         for (; cursor <= text.Length; cursor++)
         {
             
@@ -55,7 +54,7 @@ public class TextWriter : MonoBehaviour
                 continue;
             }
             ui_text.text = text.Substring(0, cursor);
-            GM.audio.PlaySound("type", .4f, new FloatRange(.8f, 1.805f));
+            GM.audio.PlaySound("type", .2f, new FloatRange(.4f, .6f));
             yield return null;
             //yield return new WaitForSeconds(Random.Range(write_delay, write_delay + write_delay / 2f));
         }

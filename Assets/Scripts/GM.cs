@@ -35,23 +35,31 @@ public class GM : MonoBehaviour
             
         }
     }
+    public bool intro = false;
     void Intro()
     {
         StartCoroutine(IntroStep());
     }
     IEnumerator IntroStep()
     {
-        yield return new WaitForSeconds(.4f);
-        level_description.text = "Portal Assembly\n\nYour colony spaceship is under attack, and is descending into an atmosphere of an unknown planet.\n\n" +
-            "You didn't manage to reach the on-board portal. Your only choice was to save yourself in an escape pod.\n\n" +
-            "Now you need to salvage the debris of your destroyed spaceship that is raining on the planet your escape pod crashed into\n" +
-            "and use it to build another portal.\n\nPress space to start";
-        yield return level_description.Write(true);
-
-        while (!Input.GetKeyDown(KeyCode.Space))
+        if (intro)
         {
-            yield return null;
+
+
+            yield return new WaitForSeconds(.4f);
+            level_description.text = "Portal Assembly\n\nYour colony spaceship is under attack, and is descending into an atmosphere of an unknown planet.\n\n" +
+                "You didn't manage to reach the on-board portal. Your only choice was to save yourself in an escape pod.\n\n" +
+                "Now you need to salvage the debris of your destroyed spaceship that is raining on the planet your escape pod crashed into\n" +
+                "and use it to build another portal.\n\nPress space to start";
+            level_description.Write(true);
+
+            while (!Input.GetKeyDown(KeyCode.Space))
+            {
+                yield return null;
+            }
+            level_description.Erase();
         }
+        yield return null;
         GameOver();
     }
     void Outro()
@@ -75,6 +83,10 @@ public class GM : MonoBehaviour
     }
     void StartLevel(int level)
     {
+        if (start_level_routine != null)
+        {
+            StopCoroutine(start_level_routine);
+        }
         start_level_routine = StartCoroutine(StartLevelStep(level));
     }
     string[] level_names = new string[]
@@ -84,7 +96,7 @@ public class GM : MonoBehaviour
         "Press Spacebar to skip this text\n\n"+
         "Use A and D or left and right cursor keys to move.\n\n" +
         "Avoid falling debris!\n\n" +
-        "Use W or up cursor key to salvage fallen debris once the timers appear.\n\n" +
+        "Use W or up cursor key to salvage the fallen debris once the timers appear.,\n" +
         "You have limited time to salvage each fallen part before it explodes, and destroys all the other debris.",
 
         "\"The ship enters the atmosphere\"\n\n" +
@@ -96,7 +108,8 @@ public class GM : MonoBehaviour
         "\"Time freezes\"\n\n" +
         "You have gained the ability to reset the debris timers.\nClick the debris of which timer you wish to reset.\n" +
         "\nYou can do this three times per wave.\n\n" +
-        "You have also gained the ability to stop time. Stop moving to freeze time, \nso you can better decide what to do next.",
+        "You have also gained the ability to stop time. Stop moving to freeze time while timers are running.\n\n" +
+        "Use W or up cursor key to stop time while debris is falling",
 
         "\"The sky is falling down\"\n\n" +
         "You have gained the ability to reset any debris timer as many times you want.\n\n" +
@@ -133,7 +146,7 @@ public class GM : MonoBehaviour
         
         while (shakescreen_inst > .01f)
         {
-            shakescreen_inst -= Time.deltaTime * 2;
+            shakescreen_inst -= Time.fixedDeltaTime * 2;
             Camera.main.transform.position = shake_center + new Vector3(Random.Range(-1, 2), Random.Range(-1, 2), 0f) * shakescreen_inst;
             
             
@@ -142,9 +155,9 @@ public class GM : MonoBehaviour
         Camera.main.transform.position = shake_center;
     }
 
-    public static void ShakeScreen(float strength = 1f)
+    public static void ShakeScreen()
     {
-        inst.shake_screen_strength = strength;
+        //inst.shake_screen_strength = strength;
         inst.StartCoroutine(inst.ShakeScreenRoutine());
     }
     [SerializeField]
@@ -163,18 +176,20 @@ public class GM : MonoBehaviour
 
     public static void GameOver()
     {
-        if(game_over_routine == null)
+        if(game_over_routine != null)
         {
-            game_over_routine = inst.StartCoroutine(GameOverStep());
+            inst.StopCoroutine(game_over_routine);
         }
-        
+        game_over_routine = inst.StartCoroutine(GameOverStep());
+
     }
     static IEnumerator GameOverStep()
     {
         
         Debris.ExplodeAllDebris();
+        player.StopWarudo();
         debris.StopRunLevel();
-        
+        player.recharges = 0;
         yield return SetCurtainVisible(true);
         game_over_routine = null;
         yield return null;
@@ -229,6 +244,13 @@ public class GM : MonoBehaviour
     [SerializeField]
     GameObject pause_icon;
     static bool _paused = false;
+    public static bool debris_falling
+    {
+        get
+        {
+            return !DebrisGenerator.playing && game_over_routine == null && inst.start_level_routine == null;
+        }
+    }
     public static bool paused
     {
         get
@@ -254,7 +276,7 @@ public class GM : MonoBehaviour
                     i.enabled = false;
                 }
             }
-            
+            ParticleSystemTimeScale.scaled = false;
         }
     }
     static Coroutine SetCurtainVisible(bool visible)

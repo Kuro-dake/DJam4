@@ -38,6 +38,11 @@ public class DebrisGenerator : MonoBehaviour
         {
             StopCoroutine(run_level_routine);
         }
+        if (trash_routine != null)
+        {
+            StopCoroutine(trash_routine);
+        }
+
     }
     public void RestartLevel()
     {
@@ -68,19 +73,28 @@ public class DebrisGenerator : MonoBehaviour
         }
         return generated_debris;
     }
+    
+    
     IEnumerator GenerateTrashDebris(int level)
     {
-
         List<Debris> trash = new List<Debris>();
+        if(trash.Count > 0)
+        {
+            throw new UnityException("Trash was not empty");
+        }
+
+        Debris.trash = new List<Debris>();
         for (int i = 0; i < trash_debris_num[level]; i++)
         {
             Debris d = Instantiate(debris_prefab);
-            d.persitent = false;
+            d.persistent = false;
             
             trash.Add(d);
             
             
         }
+
+        Debris.trash.AddRange(trash);
 
         foreach(Debris d in trash)
         {
@@ -88,18 +102,21 @@ public class DebrisGenerator : MonoBehaviour
             yield return new WaitForSeconds(generate_delay[level] / 2f); ;
             d.Fly();
         }
-
+        trash_routine = null;
         
     }
+    Coroutine trash_routine = null;
     IEnumerator RunLevelStep(int level)
     {
         Debris.salvaged = 0;
         Debris.total = 0;
         run_level = level;
-        int current_level = level;    
+        int current_level = level;
+        GM.player.transform.x(0f);
         foreach (string level_seed_string in level_seeds[current_level].Split(new char[] { '|' }))
         {
 
+            GM.player.recharges = 0;
             int level_seed = int.Parse(level_seed_string);
             playing = false;
             ground_collider.enabled = true;
@@ -117,11 +134,26 @@ public class DebrisGenerator : MonoBehaviour
                 d.Fly();
                 yield return new WaitForSeconds(generate_delay[current_level]);
             }
-            Coroutine trash_routine = StartCoroutine(GenerateTrashDebris(current_level));
+            trash_routine = StartCoroutine(GenerateTrashDebris(current_level));
             yield return trash_routine;
 
-            yield return new WaitForSeconds(3f);
+            while (Debris.any_flying)
+            {
+                if (Input.GetKey(KeyCode.I))
+                {
+                    Debug.Log("still flying");
+                }
+                yield return null;
+            }
+
+            yield return new WaitForSeconds(1f);
             ground_collider.enabled = false;
+            while (GM.player.warudo)
+            {
+                yield return null;
+            }
+            
+            
             GM.Tick();
             Debris.StartCountdown();
             GM.player.recharges = current_level >= 3 ? 3 : 0;

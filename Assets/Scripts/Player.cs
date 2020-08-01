@@ -27,18 +27,23 @@ public class Player : MonoBehaviour
         
         if (direction_movement.ContainsKey(d))
         {
-            Vector3 npos = transform.position + direction_movement[d] * Time.deltaTime * speed;
+            Vector3 npos = transform.position + direction_movement[d] * (warudo ? Time.fixedDeltaTime : Time.deltaTime) * speed;
             float nval = Mathf.Clamp(npos.x, -x_boundary, x_boundary);
             walking = nval == npos.x;
             npos.x = nval;
             transform.position = npos;
 
             csr.flipX = d == action.left;
+            
             pause_in = .3f;
+            
+            
             interacting = false;
         }
-        
-        GM.paused = false;
+        if (!warudo)
+        {
+            GM.paused = false;
+        }
         
         
     }
@@ -51,9 +56,88 @@ public class Player : MonoBehaviour
     // Update is called once per frame
     float pause_in = .3f;
     public bool time_stop { get { return GM.debris.run_level >= 3; } }
+    Coroutine warudo_routine = null;
+    void Warudo()
+    {
+        if(warudo_routine == null)
+        {
+            warudo_routine = StartCoroutine(WarudoStep());
+        }
+        
+    }
+    public void StopWarudo()
+    {
+        if(warudo_routine != null)
+        {
+            StopCoroutine(warudo_routine);
+            StartCoroutine(ReduceWarudoStep());
+            warudo_routine = null;
+        }
+
+    }
+
+    IEnumerator ReduceWarudoStep() {
+        Transform invert = GameObject.Find("invert").transform;
+        GM.audio.FadeOutSource(warudo_source, .3f);
+        while ((current -= Time.fixedDeltaTime * .7f) > 0f)
+        {
+            Debug.Log(current);
+            invert.localScale = Vector3.one * Mathf.Sin(current * Mathf.PI) * 40f;
+            yield return null;
+        }
+        current = 0f;
+        invert.localScale = Vector2.zero;
+        Time.timeScale = 1f;
+    }
+    AudioSource warudo_source;
+    public bool warudo { get { return warudo_routine != null; } }
+    float current = 0f;
+    IEnumerator WarudoStep()
+    {
+        ParticleSystemTimeScale.scaled = true;
+        Transform invert = GameObject.Find("invert").transform;
+        current = 0f;
+        warudo_source = GM.audio.PlaySound("warudo", .9f);
+        yield return new WaitForSeconds(1.55f);
+        while ((Time.timeScale -= Time.fixedDeltaTime * 4f) > .05f)
+        {
+            yield return null;
+        }
+        Time.timeScale = 0f;
+        
+        
+        while ((current += Time.fixedDeltaTime * .7f) < 1f)
+        {   
+            invert.localScale = Vector3.one * Mathf.Sin(current * Mathf.PI) * 40f;
+            yield return null;
+        }
+        /*while ((current -= Time.deltaTime) > 0f)
+        {
+            invert.localScale = Vector3.one * Mathf.Lerp(0f, target, current);
+            yield return null;
+        }*/
+        current = 0f;
+        invert.localScale = Vector2.zero;
+        while (warudo_source != null && warudo_source.isPlaying)
+        {
+            yield return null;
+        }
+        for(int i = 0; i < 3; i++)
+        {
+            GM.Tick();
+            yield return new WaitForSecondsRealtime(1f);
+        }
+        while ((Time.timeScale += Time.fixedDeltaTime * 4f) < 1f)
+        {
+
+            yield return null;
+        }
+        Time.timeScale = 1;
+        warudo_routine = null;
+    }
     void Update()
     {
-        
+        anim.updateMode = warudo ? AnimatorUpdateMode.UnscaledTime : AnimatorUpdateMode.Normal;
         walking = false;
         foreach(KeyValuePair<KeyCode, action> kv in direction_keys)
         {
@@ -65,8 +149,17 @@ public class Player : MonoBehaviour
         }
         if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow)) 
         {
-            interacting = true;
+            if (GM.debris_falling && GM.debris.run_level > 2)
+            {
+                Warudo();
+            }
+            else
+            {
+                interacting = true;
+            }
+            
         }
+        
         if (interacting)
         {
             interacting = Interact();

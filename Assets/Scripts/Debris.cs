@@ -8,32 +8,55 @@ public class Debris : MonoBehaviour
     Vector3 direction;
     // Start is called before the first frame update
     public float orig_until_explosion;
-    public float until_explosion;
+    float _until_explosion = 0f;
+    public float until_explosion
+    {
+        set {
+            //Debug.Log("ue set to " + value);
+            _until_explosion = value; }
+        get
+        {
+            return _until_explosion;
+        }
+    }
     public static List<Debris> all_debris = new List<Debris>();
+    public static List<Debris> trash = new List<Debris>();
     public static void ExplodeAllDebris()
     {
         all_debris.ForEach(delegate (Debris d)
         {
             d.Explode();
         });
-        
+        trash.ForEach(delegate (Debris d)
+        {
+            if(trash != null)
+            {
+                d.Explode();
+            }
+            
+        });
+
     }
     public static void StartCountdown()
     {
         float extra_time = all_debris[0].until_explosion - (float)Mathf.FloorToInt(all_debris[0].until_explosion);
         all_debris.ForEach(delegate (Debris d)
         {
-            if (d.cd == null || d.countdown)
+            if (d.cd == null || d.countdown || !d.persistent)
             {
                 return;
             }
-
+            
             d.cd.SetNumber(Mathf.CeilToInt(d.until_explosion));
+
+            Debug.Log((float)Mathf.FloorToInt(18f));
+
             d.until_explosion = (float)Mathf.FloorToInt(d.until_explosion) + extra_time;
             d.countdown = true;
             d.orig_until_explosion = (float)Mathf.FloorToInt(d.until_explosion);
         });
     }
+    bool released = false;
     public void Fly()
     {
         if (!alive) {
@@ -51,16 +74,20 @@ public class Debris : MonoBehaviour
         bool pass;
         int i = 0;
         tr.enabled = false;
-        Vector3 npos = transform.position;
-        npos.x = Random.Range(0f, 8f) * (direction.x > 0f ? -1 : 1);
-        transform.position = npos;
+        
         do
         {
             pass = true;
             InitTrajectory();
-            foreach (Debris d in all_debris)
+            if((Mathf.Abs(impact_point.x) > (persistent ? 7f : 10f)))
             {
-                if (d != this && (persitent && d.persitent) && Mathf.Abs(d.impact_point.x - impact_point.x) < 1f || Mathf.Abs(impact_point.x) > 7f)
+                pass = false;
+                continue;
+            }
+            foreach (Debris other_debris in all_debris)
+            {
+                
+                if (other_debris != this && (persistent && other_debris.persistent) && Mathf.Abs(other_debris.impact_point.x - impact_point.x) < 1f)
                 {
                     pass = false;
                     break;
@@ -77,6 +104,8 @@ public class Debris : MonoBehaviour
         
         initialized = true;
         all_debris.Add(this);
+        
+       
         total++;
     }
    
@@ -87,6 +116,9 @@ public class Debris : MonoBehaviour
         int i = 0;
         do
         {
+            Vector3 npos = transform.position;
+            npos.x = Random.Range(0f, 8f) * (direction.x > 0f ? -1 : 1);
+            transform.position = npos;
             direction = Vector3.down;
             direction.x = Random.Range(.3f, 1.1f) * (Random.Range(0, 2) == 1 ? 1 : -1);
             RaycastHit2D[] rh2d = Physics2D.RaycastAll(transform.position, direction, Mathf.Infinity);
@@ -113,9 +145,27 @@ public class Debris : MonoBehaviour
     LineRenderer lr { get { return GetComponent<LineRenderer>(); } }
     TrailRenderer tr { get { return GetComponent<TrailRenderer>(); } }
     ParticleSystem explosion { get { return transform.Find("explosion").GetComponent<ParticleSystem>(); } }
-    IEnumerator ShowImpactAndFly(Vector3 from, Vector3 to)
+    public static bool any_flying
     {
         
+            get{
+                foreach(Debris d in all_debris)
+                {
+                    if (d.flying)
+                    {
+                        return true;
+                    }
+
+                }
+                return false;
+            }
+        
+    }
+    bool flying = false;
+    IEnumerator ShowImpactAndFly(Vector3 from, Vector3 to)
+    {
+        flying = true;
+        released = true;
         lr.SetPositions(new Vector3[] { to, from });
         while ((lr.startWidth -= Time.deltaTime * .5f) > 0f)
         {
@@ -125,6 +175,8 @@ public class Debris : MonoBehaviour
         moving = true;
         tr.enabled = true;
         lr.enabled = false;
+
+        
     }
     ParticleSystem stasis_system
     {
@@ -183,16 +235,36 @@ public class Debris : MonoBehaviour
         {
             return;
         }
+        /*float radius = 1.5f;
+        float aspeed = speed;
+        Vector3 mpos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        Vector3 invertpos = mpos;
+        invertpos.z = 0f;
+        //invert.transform.position = invertpos;
+        Debug.DrawLine(mpos.Vector2(), mpos.Vector2() + Vector2.up * radius, Color.green);
+        Debug.DrawLine(mpos.Vector2(), mpos.Vector2() + Vector2.left * radius, Color.green);
+        Debug.DrawLine(mpos.Vector2(), mpos.Vector2() + Vector2.down * radius, Color.green);
+        Debug.DrawLine(mpos.Vector2(), mpos.Vector2() + Vector2.right * radius, Color.green);
+        if (Vector2.Distance(transform.position, mpos) < radius){
+            aspeed /= (9f*(Vector2.Distance(transform.position, mpos) * 20)) * - 1;
+        }*/
+
         transform.position += direction * Time.deltaTime * speed;
     }
     public void Explode()
     {
         StartCoroutine(ExplodeStep());
         Destroy(cd.gameObject);
-        
+
+        if (released && alive)
+        {
+            GM.Explode();
+        }
+
         alive = false;
         countdown = false;
-        GM.Explode();
+
+        
         countdown = false;
     }
     public bool alive = true;
@@ -211,6 +283,7 @@ public class Debris : MonoBehaviour
         explosion.startColor = GM.explode_debris_color;
         yield return null;
         all_debris.Remove(this);
+        trash.Remove(this);
         explosion.Play();
         yield return new WaitForSeconds(.1f);
         sr.enabled = false;
@@ -221,6 +294,7 @@ public class Debris : MonoBehaviour
     void DestroyDebris()
     {
         all_debris.Remove(this);
+        trash.Remove(this);
         Destroy(gameObject);
         
     }
@@ -231,27 +305,33 @@ public class Debris : MonoBehaviour
     [SerializeField]
     float kill_radius = .7f;
     Countdown cd { get { return GetComponentInChildren<Countdown>(); } }
-    public bool persitent = true;
+    public bool persistent = true;
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.gameObject.tag == "ground")
         {
             transform.position = impact_point;
             moving = false;
-            explosion.Play();
-            GM.ShakeScreen(.5f);
-            Debug.DrawLine(transform.position + Vector3.left * kill_radius, transform.position + Vector3.right * kill_radius, Color.red, .5f);
-            GM.Explode();
-            if (!persitent)
+            if (!persistent)
             {
                 Explode();
             }
+            else
+            {
+                explosion.Play();
+            }
+            
+            GM.ShakeScreen();
+            Debug.DrawLine(transform.position + Vector3.left * kill_radius, transform.position + Vector3.right * kill_radius, Color.red, kill_radius);
+            GM.Explode();
+            
             if (Mathf.Abs(GM.player.transform.position.x - transform.position.x) < kill_radius)
             {
                 //Destroy(GM.player.gameObject);
                 GM.GameOver();
             }
-            
+            flying = false;
+
         }
     }
     bool should_hilight = false;
@@ -263,7 +343,7 @@ public class Debris : MonoBehaviour
 
     private void OnMouseEnter()
     {
-        if(alive && persitent && countdown)
+        if(alive && persistent && countdown)
         {
             stasis = this;
         }
@@ -309,6 +389,7 @@ public class Debris : MonoBehaviour
         StartCoroutine(SalvageStep());
         GM.audio.PlaySound("salvage", .5f, new FloatRange(.8f, 1.2f));
         all_debris.Remove(this);
+
         salvaged++;
     }
 

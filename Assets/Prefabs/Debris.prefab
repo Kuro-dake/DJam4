@@ -4901,7 +4901,7 @@ MonoBehaviour:
   speed: 50
   countdown: 0
   kill_radius: 0.5
-  persitent: 1
+  persistent: 1
 --- !u!96 &3772216799440947875
 TrailRenderer:
   serializedVersion: 2
@@ -5044,7 +5044,7 @@ LineRenderer:
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: -11
   m_Positions:
   - {x: 0, y: 0, z: 0}
   - {x: 0, y: 0, z: 1}
