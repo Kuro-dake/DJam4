@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+
+
 public class GM : MonoBehaviour
 {
     static GM inst;
@@ -10,7 +12,7 @@ public class GM : MonoBehaviour
     {
         inst = this;
         Initialize();
-        
+
     }
     Vector3 shake_center;
     void Initialize()
@@ -25,14 +27,14 @@ public class GM : MonoBehaviour
         ticked = false;
         ui_text = player.recharges > 0 ? player.recharges + " remote reset usages left" : "";
 
-        if(start_level_routine != null && Input.GetKeyDown(KeyCode.Space))
+        if (start_level_routine != null && Input.GetKeyDown(KeyCode.Space))
         {
             StopCoroutine(start_level_routine);
             start_level_routine = null;
             level_description.Erase();
             SetCurtainVisible(false);
             debris.RunLevel(debris.run_level);
-            
+
         }
     }
     public bool intro = false;
@@ -79,7 +81,7 @@ public class GM : MonoBehaviour
         {
             yield return null;
         }
-        
+
     }
     void StartLevel(int level)
     {
@@ -91,36 +93,36 @@ public class GM : MonoBehaviour
     }
     string[] level_names = new string[]
     {
-        "\"Crash landing\"" +
-        "\n\n" +
-        "Press Spacebar to skip this text\n\n"+
-        "Use A and D or left and right cursor keys to move.\n\n" +
-        "Avoid falling debris!\n\n" +
-        "Use W or up cursor key to salvage the fallen debris once the timers appear.,\n" +
-        "You have limited time to salvage each fallen part before it explodes, and destroys all the other debris.",
+    "\"Crash landing\"" +
+    "\n\n" +
+    "Press Spacebar to skip this text\n\n"+
+    "Use A and D or left and right cursor keys to move.\n\n" +
+    "Avoid falling debris!\n\n" +
+    "Use W or up cursor key to salvage the fallen debris once the timers appear.,\n" +
+    "You have limited time to salvage each fallen part before it explodes, and destroys all the other debris.",
 
-        "\"The ship enters the atmosphere\"\n\n" +
-        "Watch the order in which the debris hit the ground.\nThe sooner debris falls the sooner it explodes.",
+    "\"The ship enters the atmosphere\"\n\n" +
+    "Watch the order in which the debris hit the ground.\nThe sooner debris falls the sooner it explodes.",
 
-        "\"Stasis\"\n\n" +
-        "You have gained the ability to stop the countdown of a single debris.\nHover with your mouse over the debris you wish to freeze.",
+    "\"Stasis\"\n\n" +
+    "You have gained the ability to stop the countdown of a single debris.\nHover with your mouse over the debris you wish to freeze.",
 
-        "\"Time freezes\"\n\n" +
-        "You have gained the ability to reset the debris timers.\nClick the debris of which timer you wish to reset.\n" +
-        "\nYou can do this three times per wave.\n\n" +
-        "You have also gained the ability to stop time. Stop moving to freeze time while timers are running.\n\n" +
-        "Use W or up cursor key to stop time while debris is falling",
+    "\"Time freezes\"\n\n" +
+    "You have gained the ability to reset the debris timers.\nClick the debris of which timer you wish to reset.\n" +
+    "\nYou can do this three times per wave.\n\n" +
+    "You have also gained the ability to stop time. Stop moving to freeze time while timers are running.\n\n" +
+    "Use W or up cursor key to stop time while debris is falling",
 
-        "\"The sky is falling down\"\n\n" +
-        "You have gained the ability to reset any debris timer as many times you want.\n\n" +
-        "The debris timers will reset once you approach it."
+    "\"The sky is falling down\"\n\n" +
+    "You have gained the ability to reset any debris timer as many times you want.\n\n" +
+    "The debris timers will reset once you approach it."
     };
     IEnumerator StartLevelStep(int level)
     {
         yield return new WaitForSeconds(.4f);
         level_description.text = "Level " + (level + 1) + ":\n" + level_names[level];
         yield return level_description.Write(true);
-        
+
         while (!Input.GetKeyDown(KeyCode.Space))
         {
             yield return null;
@@ -143,13 +145,13 @@ public class GM : MonoBehaviour
     IEnumerator ShakeScreenRoutine()
     {
         float shakescreen_inst = shake_screen_strength;
-        
+
         while (shakescreen_inst > .01f)
         {
             shakescreen_inst -= Time.fixedDeltaTime * 2;
             Camera.main.transform.position = shake_center + new Vector3(Random.Range(-1, 2), Random.Range(-1, 2), 0f) * shakescreen_inst;
-            
-            
+
+
             yield return null;
         }
         Camera.main.transform.position = shake_center;
@@ -176,7 +178,7 @@ public class GM : MonoBehaviour
 
     public static void GameOver()
     {
-        if(game_over_routine != null)
+        if (game_over_routine != null)
         {
             inst.StopCoroutine(game_over_routine);
         }
@@ -185,7 +187,7 @@ public class GM : MonoBehaviour
     }
     static IEnumerator GameOverStep()
     {
-        
+
         Debris.ExplodeAllDebris();
         player.StopWarudo();
         debris.StopRunLevel();
@@ -193,7 +195,7 @@ public class GM : MonoBehaviour
         yield return SetCurtainVisible(true);
         game_over_routine = null;
         yield return null;
-        if(debris.run_level < 5)
+        if (debris.run_level < 5)
         {
             inst.StartLevel(debris.run_level);
         }
@@ -201,8 +203,8 @@ public class GM : MonoBehaviour
         {
             inst.Outro();
         }
-        
-        
+
+
     }
     [SerializeField]
     Sprite _circle;
@@ -224,9 +226,10 @@ public class GM : MonoBehaviour
 
     static bool ticked = false;
     static int clock = 1;
-  
-    
-    public static void Tick() {
+
+
+    public static void Tick()
+    {
         if (ticked)
         {
             return;
@@ -260,7 +263,7 @@ public class GM : MonoBehaviour
         set
         {
             _paused = value;
-            if(game_over_routine == null && inst.start_level_routine == null)
+            if (game_over_routine == null && inst.start_level_routine == null)
             {
                 Time.timeScale = value ? 0f : 1f;
                 foreach (Image i in inst.pause_icon.GetComponentsInChildren<Image>())
